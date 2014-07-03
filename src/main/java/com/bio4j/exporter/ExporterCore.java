@@ -1,17 +1,17 @@
 package com.bio4j.exporter;
 
-import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.gremlin.groovy.Gremlin;
-import com.tinkerpop.pipes.Pipe;
-import com.tinkerpop.pipes.util.iterators.SingleIterator;
+import java.util.concurrent.TimeUnit;
+import com.tinkerpop.blueprints.Graph;
 import com.thinkaurelius.titan.core.TitanFactory;
 import com.thinkaurelius.titan.core.TitanGraph;
+import com.google.common.util.concurrent.*;
 
 //holds business logic behind the exporter
 public class ExporterCore {
+	private static final long TIME_LIMIT_IN_SECONDS = 60;
 	private String outputFormat;
-	private int limit;
-	private int maxTime;
+	private int maxNumberOfResults;
+	private long maxTime = TIME_LIMIT_IN_SECONDS;
 	private boolean stream;
 	private String source;
 	private String query;
@@ -41,19 +41,19 @@ public class ExporterCore {
 		}
 	}
 
-	public int getLimit() {
-		return this.limit;
+	public int getMaxNumberOfResults() {
+		return this.maxNumberOfResults;
 	}
 
-	public void setLimit(int limit) {
-		this.limit = limit;
+	public void setMaxNumberOfResults(int limit) {
+		this.maxNumberOfResults = limit;
 	}
 
-	public void setLimit(String limit) {
-		setLimit(Integer.parseInt(limit));
+	public void setMaxNumberOfResults(String limit) {
+		setMaxNumberOfResults(Integer.parseInt(limit));
 	}
 
-	public int getMaxTime() {
+	public long getMaxTime() {
 		return this.maxTime;
 	}
 
@@ -117,49 +117,32 @@ public class ExporterCore {
 		this.query = query;		
 	}
 
-	public void runQuery() {
-		if(this.query.startsWith("g.V().")){
-			String translatedQuery = this.query.substring(6); // discard g.V()
-			Pipe pipe = Gremlin.compile("_()." + translatedQuery); // create pipe for iteration
-			pipe.setStarts(this.graph.getVertices());
-				for(Object name : pipe) {
-					System.out.println("----------------------------------------------------");
-					System.out.println((String) name);
-					System.out.println("----------------------------------------------------");
-				}			
-		}
-		if(this.query.startsWith("g.v(")){
-			// get the index number given
-			String[] indexInString = this.query.split("\\("); 
-			indexInString = indexInString[1].split("\\)"); // get the number between parentesis
-			int index = Integer.parseInt(indexInString[0]); // number should be in the vector
-			
-			String translatedQuery = this.query.substring(4); // discard 'g.v('
-			translatedQuery = translatedQuery.substring(indexInString[0].length() + 1); // discard the number and ')'
-			
-			if(translatedQuery.equals("")){
-				//TODO IMPROVE QUERY HANDLING
+	public void runQuery() throws Exception {
+		
+		QueryComputer qc = new QueryComputer(this.query, this.graph);
+		TimeLimiter limiter = new SimpleTimeLimiter();
+		try{
+			Graph result = limiter.callWithTimeout(qc, this.maxTime, TimeUnit.SECONDS, false);		
+		} catch(UncheckedTimeoutException e){
+			if(e instanceof UncheckedTimeoutException){
+				System.out.println("Time limit exceeded");
 				return;
 			}
-		    		    
-		    Pipe pipe = Gremlin.compile("_()." + translatedQuery) ;
-		    pipe.setStarts(new SingleIterator<Vertex>(graph.getVertex(index))); // create pipe for iteration
-		    for(Object name : pipe) {
-		    	System.out.println("----------------------------------------------------");
-				System.out.println((String) name);
-				System.out.println("----------------------------------------------------");
-		    }		
+			System.out.println("Error running query");
+			throw e;
 		}
+	}
+
+	public Graph getGraph() {
+		return this.graph;
 	}
 
 	public void shutdownGraph() throws Exception {
 		if(this.graph instanceof TitanGraph){
-			if(this.graph == null){
-				throw new Exception("Graph does not exist");
-			} else{
-				this.graph.shutdown();
-			}			
-		}		
-	}
-}
+			throw new Exception("Graph does not exist");
+		} else{
+			this.graph.shutdown();
+		}			
+	}		
+}	
 

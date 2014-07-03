@@ -33,7 +33,7 @@ public class Bio4jExporter {
 		}
 	}
 
-	private static void initialQuery(ExporterCore exporter) {
+	private static void initialQuery(ExporterCore exporter) throws Exception {
 		if(exporter.getQuery() == null){
 			return;
 		} else {
@@ -149,7 +149,7 @@ public class Bio4jExporter {
 			exporter.setFormat(cmd.getOptionValue("output-format"));
 		}
 		if (cmd.hasOption("limit")) {
-			exporter.setLimit(cmd.getOptionValue("limit"));
+			exporter.setMaxNumberOfResults(cmd.getOptionValue("limit"));
 		}
 		if (cmd.hasOption("max-time")) {
 			exporter.setMaxTime(cmd.getOptionValue("max-time"));
