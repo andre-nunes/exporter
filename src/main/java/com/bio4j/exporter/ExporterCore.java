@@ -122,8 +122,9 @@ public class ExporterCore {
 		QueryComputer qc = new QueryComputer(this.query, this.graph);
 		TimeLimiter limiter = new SimpleTimeLimiter();
 		try{
-			Graph result = limiter.callWithTimeout(qc, this.maxTime, TimeUnit.SECONDS, false);		
-		} catch(UncheckedTimeoutException e){
+			Graph result = limiter.callWithTimeout(qc, this.maxTime, TimeUnit.SECONDS, false);	
+			return;
+		} catch(Exception e){
 			if(e instanceof UncheckedTimeoutException){
 				System.out.println("Time limit exceeded");
 				return;
@@ -139,9 +140,9 @@ public class ExporterCore {
 
 	public void shutdownGraph() throws Exception {
 		if(this.graph instanceof TitanGraph){
-			throw new Exception("Graph does not exist");
+			this.graph.shutdown();			
 		} else{
-			this.graph.shutdown();
+			throw new Exception("Graph does not exist");
 		}			
 	}		
 }	

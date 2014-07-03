@@ -20,6 +20,7 @@ public class QueryComputer implements Callable<Graph> {
 	
 	@Override
 	public Graph call() throws Exception {
+		assert (this.query != null);
 		//TODO create a graph for return
 		if(this.query.startsWith("g.V().")){
 			String translatedQuery = this.query.substring(6); // discard g.V()
